@@ -53,12 +53,14 @@ public abstract class AbstractFileBaseTest {
         } catch (InterruptedException e1) {
         }
         assertFalse(cache.isCached(name));
-        cache.writeFile(name, data);
-        assertTrue(cache.isCached(name));
-        CachedFile file = cache.readFile(name);
-        assertEquals(name, file.getName());
-        assertArrayEquals(data, file.getData());
-        assertTrue(now.getTime() < file.lastModified());
+        for(int i = 0; i < 2; i++) {
+            cache.writeFile(name, data);
+            assertTrue(cache.isCached(name));
+            CachedFile file = cache.readFile(name);
+            assertEquals(name, file.getName());
+            assertArrayEquals(data, file.getData());
+            assertTrue(now.getTime() < file.lastModified());
+        }
         cache.removeFile(name);
         assertFalse(cache.isCached(name));
         try {

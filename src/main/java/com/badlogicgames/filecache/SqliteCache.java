@@ -42,11 +42,14 @@ public class SqliteCache implements FileCache {
           + "  lastModified Long"
           + ")";
     
+    private static final String SQL_CREATE_INDEX =
+            "create unique index if not exists nameIndex on files (name)";
+    
     private static final String SQL_WRITE = 
-            "insert into files"
+            "insert or replace into files"
           + "  (name, data, lastModified)"
           + "  values (?, ?, ?)";
-                    
+    
     private static final String SQL_READ = 
             "select data, lastModified from files"
           + "  where name = ?";
@@ -75,7 +78,7 @@ public class SqliteCache implements FileCache {
             synchronized (connectionPools) {
                 SingletonConnectionPool connection = connectionPools.get(jdbc);
                 if (connection == null) {
-                    connection = new SingletonConnectionPool(jdbc);
+                    connection = new SingletonConnectionPool(jdbc);                    
                 }
                 connectionPools.put(jdbc, connection);
                 this.connectionPool = connection;
@@ -90,14 +93,16 @@ public class SqliteCache implements FileCache {
         Connection conn = connectionPool.getConnection();
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(SQL_CREATE_TABLE);
+            stmt.executeUpdate(SQL_CREATE_INDEX);
         }
     }
 
     @Override
     public void writeFile(String name, byte[] data) throws IOException {
         try {
+            String sql = SQL_WRITE;
             Connection conn = connectionPool.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_WRITE)) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, name);
                 stmt.setBytes(2, data);
                 stmt.setLong(3, new Date().getTime());
@@ -182,6 +187,7 @@ public class SqliteCache implements FileCache {
         public Connection getConnection() throws SQLException {
             if (connection == null || connection.isClosed()) {
                 connection = DriverManager.getConnection(jdbc);
+                connection.setAutoCommit(false);
             }
             return connection;
         }
